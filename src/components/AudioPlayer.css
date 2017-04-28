@@ -1,0 +1,31 @@
+.AudioPlayer {
+    width: 80%;
+    margin: auto;
+    display: flex;
+    flex-direction: column
+}
+
+.AudioPlayer__toggleplay {
+    display: block;
+    background-color: #5a7a80;
+    border: 1px solid white;
+    cursor: pointer;
+    outline: none;
+    margin: 0;
+    color: white;
+}
+
+.AudioPlayer__controls {
+    margin: 5px 0;
+}
+
+.AudioPlayer__progress {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 1em;
+    padding: 4px 0;
+    border-radius: none;
+    cursor: pointer;
+}

@@ -1,0 +1,38 @@
+
+.AudioList {
+    list-style: none;
+    padding: 0;
+    margin: 2em auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 80%;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+}
+
+.AudioList__track {
+    cursor: pointer;
+    display: flex;
+    align-content: center;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.AudioList__track:nth-child(even) {
+    background-color: rgba(0,0,0,0.7)
+}
+
+.AudioList__track:hover {
+    background-color: #CCC;
+    color: #000;
+}
+
+
+.AudioList__track div:first-of-type {
+    width: 32px;
+    height: 32px;
+    margin-left: 10px;
+}
+.AudioList__track div {
+    align-self: center;
+}

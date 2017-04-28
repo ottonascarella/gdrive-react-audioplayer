@@ -1,0 +1,15 @@
+.App {
+  padding: 2em;
+  height: 100%;
+  width: 1280px;
+  margin: auto;
+  background-color: #DDD;
+}
+
+
+@media all and (max-width: 1280px) {
+  .App {
+    width: 100%;
+    margin: 0;
+  }
+}

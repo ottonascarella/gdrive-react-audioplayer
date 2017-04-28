@@ -1,0 +1,18 @@
+.GooglePicker {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 50px;
+    width: 80%;
+    margin: auto;
+}
+
+.GooglePicker button {
+    display: block;
+    background-color: #5a7a80;
+    border: 1px solid white;
+    cursor: pointer;
+    outline: none;
+    margin: 0 0 0 4px;
+    color: white;
+}
