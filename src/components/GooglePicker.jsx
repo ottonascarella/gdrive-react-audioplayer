@@ -1,6 +1,7 @@
 /*global gapi, google: true*/
 import React, {Component} from 'react';
-
+import RaisedButton from 'material-ui/RaisedButton';
+import {Toolbar, ToolbarGroup, ToolbarSeparator, ToolbarTitle} from 'material-ui/Toolbar';
 
 import './GooglePicker.css';
 
@@ -89,7 +90,6 @@ class GooglePicker extends Component {
 
       this.setState({authToken: authResponse.access_token});
 
-
     } else {
 
       this.setState({ authToken: null, files: [] });
@@ -124,20 +124,24 @@ class GooglePicker extends Component {
     return (
       <div>
 
-      <div className="GooglePicker">
-        {
-          !!authToken && pickerLoaded
-            && <button className="picker" onClick={this.openPicker.bind(this)}>load files to playlist</button>
-        }
-        {
-          !!authToken
-              ? <button className="sign-out" onClick={this.onSignOutClick}>sign out</button>
-              : <button className="sign-in" onClick={this.onSignInClick}>sign in</button>
-        }
-      </div>
+        <Toolbar style={{'flex-direction': 'row-reverse'}}>
+          <ToolbarGroup>
+            {
+              !!authToken && pickerLoaded
+                && <RaisedButton primary label="choose files" onClick={this.openPicker.bind(this)} />
+            }
+            {
+              !!authToken
+                  ? <RaisedButton primary label="sign out" onClick={this.onSignOutClick} />
+                  : <RaisedButton primary label="sign in" onClick={this.onSignInClick} />
+            }
+          </ToolbarGroup>
+        </Toolbar>
+
         {
           !!authToken && pickerLoaded && children && React.cloneElement(children, {files})
         }
+
       </div>
     );
   }

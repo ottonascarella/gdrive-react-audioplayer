@@ -1,10 +1,8 @@
 import React, {Component} from 'react';
 import { dropWhile } from '../helpers/funk';
-
-import './AudioList.css';
+import {List, ListItem} from 'material-ui/List';
 
 class AudioList extends Component {
-
 
     constructor(props) {
         super(props);
@@ -32,22 +30,28 @@ class AudioList extends Component {
 
     }
 
+    componentWillReceiveProps(nextProps) {
+        this.setState({file: nextProps.files[0]});
+    }
+
     render() {
         const {files, children} = this.props;
         const {file} = this.state;
         return (
             <div>
                 { !!file && React.cloneElement(children, {file, callNextTrack: this.callNextTrack.bind(this)}) }
-                <ul className="AudioList">
+                <List>
+
                     {
                         files.map(f =>
-                            <li className="AudioList__track" key={f.id} onClick={this.handleClick.bind(this, f)}>
-                                <div></div>
-                                <div>{f.name}</div>
-                            </li>
+                            <ListItem
+                                primaryText={f.name}
+                                key={f.id}
+                                onClick={this.handleClick.bind(this, f)}
+                            />
                         )
                     }
-                </ul>
+                </List>
             </div>
         );
     }

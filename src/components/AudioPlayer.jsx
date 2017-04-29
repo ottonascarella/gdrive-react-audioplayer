@@ -1,6 +1,9 @@
 /*global AV, gapi: true*/
 import React, {Component} from 'react';
-import getFile from '../helpers/getFile';
+import IconButton from 'material-ui/IconButton';
+import LinearProgress from 'material-ui/LinearProgress';
+import {Toolbar, ToolbarGroup, ToolbarSeparator, ToolbarTitle} from 'material-ui/Toolbar';
+import canPlayNative from '../helpers/canPlayNative';
 
 import './AudioPlayer.css';
 
@@ -17,58 +20,143 @@ class AudioPlayer extends Component {
             progress: 0
         };
 
+        this.onEnd = this._onEnd.bind(this);
+        this.onLoadedMetaData = this._onLoadedMetaData.bind(this);
+        this.onTimeUpdate = this._onTimeUpdate.bind(this);
+        this.onPlay = this._onPlay.bind(this);
+        this.onLoading = this._onLoading.bind(this);
+
     }
 
-    _loadFile(file) {
-
-        console.log(`load file called with ${file.name}`);
-
-        const that = this;
-        const url = file ? `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media` : '';
-        const authResponse = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse(true);
-        const headers = {
-            'Authorization':`Bearer ${authResponse.access_token}`
+    playNative(file) {
+        let player = this.player = new Audio();
+        const url = this.getFileUrl(file);
+        player.on = player.addEventListener;
+        player.off = player.removeEventListener;
+        player.seek = function(x) {
+            this.currentTime = x;
         };
+
+        player.isNative = true;
+
+        console.log('native');
+        player.on('loadedmetadata', this.onLoadedMetaData );
+        player.on('ended', this.onEnd);
+        player.on('timeupdate', this.onTimeUpdate);
+        player.on('canplay', this.onPlay);
+
+        player.src = url;
+        player.play();
+        this.onLoading();
+    }
+
+    getFileUrl(file) {
+        const authResponse = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse(true);
+        return file ? `https://www.googleapis.com/drive/v3/files/${file.id}?access_token=${authResponse.access_token}&alt=media` : '';
+    }
+
+    playAurora(file) {
+        const that = this;
+        const url = this.getFileUrl(file);
+
+        let player = this.player;
+        let req = this.req = new XMLHttpRequest();
+
+        // player = that.player = AV.Player.fromURL(url);
+        // player.on('duration', this.onLoadedMetaData);
+        // player.on('end', this.onEnd);
+        // player.on('progress', this.onTimeUpdate);
+        // player.on('ready', this.onPlay);
+        // player.play();
+
+        console.log('aurora');
+
+        req.onreadystatechange = () => {
+            if (req.readyState !== req.DONE) return;
+            this.req = null;
+            if (req.status !== 200) return;
+            player && player.stop && player.stop();
+            player = that.player = AV.Player.fromBuffer(req.response);
+
+            player.on('duration', this.onLoadedMetaData);
+            player.on('end', this.onEnd);
+            player.on('progress', this.onTimeUpdate);
+
+            player.play();
+            this._onPlay();
+        };
+
+        req.open('GET', url, true);
+        req.responseType = 'arraybuffer';
+        req.send();
+
+        this.onLoading();
+
+    }
+
+    _onEnd(props) {
+        this.props.callNextTrack();
+    }
+
+    _onLoading() {
+        this.setState({disabled: true, playing: false, loading: true})
+    }
+    _onPlay() {
+        console.log('playing.');
+        this.setState({playing: true, loading: false, disabled: false});
+    }
+
+    _onTimeUpdate(e) {
+
+        if (typeof(e) === 'number') {
+            this.setState({progress: e});
+            return;
+        }
+
+        this.setState({progress: e.target.currentTime});
+
+    }
+
+    _onLoadedMetaData(e) {
+        let n;
+        if (typeof(e) === 'number') n = e;
+        else n = e.target.duration;
+        const time = `${n / 1000 / 60 | 0}:${n / 1000 % 60 | 0}`;
+        this.setState({time, duration: n});
+    }
+
+    loadFile(file) {
+
+        file && file.name &&
+            console.log(`loading file called with ${file.name}`);
 
         let player = this.player;
         let req = this.req;
 
         req && req.abort && req.abort();
-        player && player.stop && player.stop();
 
-        player = this.player;
-        req = this.req = getFile(headers, url);
+        // pause player
+        // deattach handlers to prevent memory leak
+        if (player) {
+            player.pause && player.pause();
+            player.off('end', this.onEnd);
+            player.off('ended', this.onEnd);
+            player.off('loadedmetadata', this.onLoadedMetaData);
+            player.off('timeupdate', this.onTimeUpdate);
+            player.off('duration', this.onLoadedMetaData);
+            player.off('progress', this.onTimeUpdate);
+            player.off('ready', this.onPlay);
+            player.off('canplay', this.onPlay);
+        }
 
-        req.setRequestHeader('Cache-Control','max-age=3600, must-revalidate');
-        req.responseType = 'arraybuffer';
+        if (!file) return;
 
-        req.onreadystatechange = () => {
-            if (req.readyState !== req.DONE) return;
-            this.req = null;
-            this.setState({disabled: false});
-            if (req.status !== 200) return;
-            player && player.stop && player.stop();
-            player = that.player = AV.Player.fromBuffer(req.response);
+        if (canPlayNative(file)) {
+            this.playNative(file);
+            return;
+        }
 
-            player.on('duration', (n) => {
-                const time = `${n / 1000 / 60 | 0}:${n / 1000 % 60 | 0}`;
-                this.setState({time, duration: n});
-            });
-
-            player.on('end', () => {
-                this.props.callNextTrack();
-            });
-
-            player.on('progress', (e) => {
-                this.setState({progress: e});
-            });
-
-            this.setState({playing: true, loading: false});
-            player.play();
-        };
-
-        req.send();
-        this.setState({disabled: true, playing: false, loading: true});
+        this.playAurora(file);
     }
 
     _onTogglePlay() {
@@ -103,7 +191,21 @@ class AudioPlayer extends Component {
 
     propsChanged(props) {
         const {file} = props;
-        this._loadFile(file);
+
+        if (!file) this.setState({
+            loading: false,
+            disabled: true,
+            playing: false,
+            duration: 0,
+            progress: 0
+        });
+
+        if (this.player && this.player.pause) {
+            this.player.pause();
+            this.player = undefined;
+        }
+
+        this.loadFile(file);
     }
 
     render() {
@@ -114,26 +216,36 @@ class AudioPlayer extends Component {
         if (!gapi || !gapi.auth2) return <div></div>;
 
         return (
-            <div className="AudioPlayer">
-                <span className="AudioPlayer__filename">
-                    {loading ? `loading ${filename}...` : filename}
-                </span>
+            <div>
 
-                <div className="AudioPlayer__controls">
+                <div>
 
-                    <button className="AudioPlayer__toggleplay"
-                            disabled={disabled}
-                            onClick={this._onTogglePlay.bind(this)}>
-                        {playing ? 'pause' : 'play'}
-                    </button>
+                    <Toolbar>
+                        <ToolbarGroup>
 
-                    {
-                        loading
-                        ? <progress className="AudioPlayer__progress" />
-                        : <progress className="AudioPlayer__progress" value={progress} max={duration} onClick={this.onProgressClick.bind(this)} />
-                    }
+                        <IconButton
+                                iconClassName="material-icons"
+                                disabled={disabled}
+                                onClick={this._onTogglePlay.bind(this)} >
+                            {playing ? 'pause' : 'play_arrow'}
+                        </IconButton>
 
+                        <ToolbarTitle text={loading ? `loading ${filename}...` : filename} />
+
+                        </ToolbarGroup>
+                    </Toolbar>
+                    <div className={loading ? 'AudioPlayer__progress AudioPlayer__progress--loading' : 'AudioPlayer__progress'} onClick={this.onProgressClick.bind(this)}>
+
+                        <LinearProgress
+                            mode={loading ? 'indeterminate' : 'determinate'}
+                            value={loading ? 0 : progress}
+                            min={0}
+                            max={loading ? 100 : duration}
+                            style={{height:'100%', pointerEvents:'none', borderRadius: 0}}
+                            />
+                    </div>
                 </div>
+
             </div>
         );
     }
