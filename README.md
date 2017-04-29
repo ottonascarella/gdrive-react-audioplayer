@@ -3,7 +3,13 @@
 An audio player built with [Aurora.js](https://github.com/audiocogs/aurora.js/) that plays audio files from your Google Drive.
 
 To install dependencies:
-`npm install` or `yarn install`
+```
+npm install
+
+// or
+
+yarn install
+```
 
 To run locally:
 ```
