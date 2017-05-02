@@ -2,7 +2,7 @@
 import React, {Component} from 'react';
 import IconButton from 'material-ui/IconButton';
 import LinearProgress from 'material-ui/LinearProgress';
-import {Toolbar, ToolbarGroup, ToolbarSeparator, ToolbarTitle} from 'material-ui/Toolbar';
+import {Toolbar, ToolbarGroup, ToolbarTitle} from 'material-ui/Toolbar';
 import canPlayNative from '../helpers/canPlayNative';
 
 import './AudioPlayer.css';
@@ -16,6 +16,7 @@ class AudioPlayer extends Component {
             loading: false,
             disabled: true,
             playing: false,
+            volume: 100,
             duration: 0,
             progress: 0
         };
@@ -25,6 +26,82 @@ class AudioPlayer extends Component {
         this.onTimeUpdate = this._onTimeUpdate.bind(this);
         this.onPlay = this._onPlay.bind(this);
         this.onLoading = this._onLoading.bind(this);
+        this.keyboard = this._keyboard.bind(this);
+
+        document.body.addEventListener('keydown', this.keyboard);
+
+    }
+    get volume() {
+        const p = this.player;
+        if (!p) return 0;
+        return (p.isNative) ? p.volume * 100 : p.volume;
+    }
+    set volume(x) {
+        const p = this.player;
+        if (!p) return 0;
+        const max = (p.isNative) ? 1 : 100;
+        const min = 0;
+        let v = p.volume;
+
+        if (p.isNative) v = x / 100;
+        else v = x;
+
+        if (v > max) v = max;
+        else if (v < min) v = min;
+
+        p.volume = v;
+
+        return x;
+    }
+    volumeControl(cmd) {
+        const player = this.player;
+        if (!player) return;
+        const max = 100;
+        const min = 0;
+        const current = this.volume;
+        const step = 10;
+
+        switch (cmd) {
+            case 'up':
+                if (current >= max - step) return;
+                this.volume += step;
+                break;
+            case 'down':
+                if (player.volume <= min - step) return;
+                this.volume -= step;
+                break;
+            case 'toggle-mute':
+                if (this.volume < 0.1) {
+                    this.volume = max;
+                } else {
+                    this.volume = min;
+                }
+                break;
+            default:
+        }
+
+        this.setState({volume: this.volume});
+    }
+
+    _keyboard({key}) {
+        // console.log(key);
+        switch(key) {
+            case ' ':
+                this._onTogglePlay.call(this);
+                break;
+            case 'ArrowUp':
+                this.volumeControl('up');
+                break;
+            case 'ArrowDown':
+                this.volumeControl('down');
+                break;
+            case 'm':
+                this.volumeControl('toggle-mute');
+                break;
+            case 'ArrowRight':
+            case 'ArrowLeft':
+            default:
+        }
 
     }
 
@@ -33,13 +110,16 @@ class AudioPlayer extends Component {
         const url = this.getFileUrl(file);
         player.on = player.addEventListener;
         player.off = player.removeEventListener;
+
         player.seek = function(x) {
             this.currentTime = x;
         };
 
+
         player.isNative = true;
 
-        console.log('native');
+        console.log(`playing ${file.name} native`);
+
         player.on('loadedmetadata', this.onLoadedMetaData );
         player.on('ended', this.onEnd);
         player.on('timeupdate', this.onTimeUpdate);
@@ -69,7 +149,7 @@ class AudioPlayer extends Component {
         // player.on('ready', this.onPlay);
         // player.play();
 
-        console.log('aurora');
+        console.log(`playing ${file.name} through Aurora.js`);
 
         req.onreadystatechange = () => {
             if (req.readyState !== req.DONE) return;
@@ -81,7 +161,6 @@ class AudioPlayer extends Component {
             player.on('duration', this.onLoadedMetaData);
             player.on('end', this.onEnd);
             player.on('progress', this.onTimeUpdate);
-
             player.play();
             this._onPlay();
         };
@@ -159,8 +238,12 @@ class AudioPlayer extends Component {
         this.playAurora(file);
     }
 
+    _onToggleMute() {
+        this.volumeControl('toggle-mute');
+    }
     _onTogglePlay() {
         const player = this.player;
+        if (this.state.loading) return;
         if (!this.state.playing) {
             this.setState({playing: true});
             player && player.play && player.play();
@@ -211,7 +294,14 @@ class AudioPlayer extends Component {
     render() {
         const {file} = this.props;
         const filename = file ? file.name : '';
-        const {disabled, loading, playing, progress, duration} = this.state;
+        const {disabled, loading, playing, progress, duration, volume} = this.state;
+
+        let volumeIcon = 'volume_up';
+
+        if (volume > 66) volumeIcon = 'volume_up';
+        else if (volume > 33) volumeIcon = 'volume_down';
+        else if (volume > 0) volumeIcon = 'volume_mute';
+        else volumeIcon = 'volume_off';
 
         if (!gapi || !gapi.auth2) return <div></div>;
 
@@ -228,6 +318,12 @@ class AudioPlayer extends Component {
                                 disabled={disabled}
                                 onClick={this._onTogglePlay.bind(this)} >
                             {playing ? 'pause' : 'play_arrow'}
+                        </IconButton>
+                        <IconButton
+                                iconClassName="material-icons"
+                                disabled={disabled}
+                                onClick={this._onToggleMute.bind(this)} >
+                            {volumeIcon}
                         </IconButton>
 
                         <ToolbarTitle text={loading ? `loading ${filename}...` : filename} />

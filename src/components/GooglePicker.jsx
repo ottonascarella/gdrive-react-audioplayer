@@ -1,7 +1,7 @@
 /*global gapi, google: true*/
 import React, {Component} from 'react';
 import RaisedButton from 'material-ui/RaisedButton';
-import {Toolbar, ToolbarGroup, ToolbarSeparator, ToolbarTitle} from 'material-ui/Toolbar';
+import {Toolbar, ToolbarGroup} from 'material-ui/Toolbar';
 
 import './GooglePicker.css';
 
@@ -110,6 +110,10 @@ class GooglePicker extends Component {
     let docs = [];
     if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
       docs = data[google.picker.Response.DOCUMENTS];
+    }
+
+    if (document.activeElement) {
+      document.activeElement.blur();
     }
 
     if (docs.length) this.setState({files:docs});
